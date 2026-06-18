@@ -4,44 +4,55 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import com.aziza.tcwc_solarsystem.ui.theme.TCWCSolarSystemTheme
+
+private val SpaceCard = Color(0xCC0B1223)
+private val CardStroke = Color(0xFF2F2E2E)
+
+private val White100 = Color(0xFFFFFFFF)
+private val White88 = Color(0xE0FFFFFF)
+private val White80 = Color(0xCCFFFFFF)
+private val White66 = Color(0xA8FFFFFF)
+private val White50 = Color(0x80FFFFFF)
+private val Divider = Color(0x29FFFFFF)
+
+private val Rubik = FontFamily(
+    Font(R.font.rubik, FontWeight.Normal),
+    Font(R.font.rubik_medium, FontWeight.Medium),
+    Font(R.font.rubik_bold, FontWeight.Bold)
+)
+private val Lily = FontFamily(
+    Font(R.font.lily_script_one, FontWeight.Normal)
+)
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TCWCSolarSystemTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+            SolarSystemScreen()
         }
     }
 }
-
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
+private fun SolarSystemScreen() {
+    androidx.compose.foundation.layout.Box(
+        modifier = androidx.compose.ui.Modifier
+            .fillMaxSize()
+            .background(Color.Black)
     )
 }
 
-@Preview(showBackground = true)
+@Preview(widthDp = 360, heightDp = 800)
 @Composable
-fun GreetingPreview() {
-    TCWCSolarSystemTheme {
-        Greeting("Android")
-    }
+private fun SolarSystemPreview() {
+    SolarSystemScreen()
 }
