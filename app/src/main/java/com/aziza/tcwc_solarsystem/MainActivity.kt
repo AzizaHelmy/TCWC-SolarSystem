@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.annotation.Keep
+import androidx.compose.foundation.layout.fillMaxHeight
 
 //region theme
 private val SpaceCard = Color(0xFF0B0E17)
@@ -67,8 +68,6 @@ private val CardStroke = Color(0x1AFFFFFF)
 private val White100 = Color(0xFFFFFFFF)
 private val White88 = Color(0xE0FFFFFF)
 private val White80 = Color(0xCCFFFFFF)
-private val White66 = Color(0xA8FFFFFF)
-private val White50 = Color(0x80FFFFFF)
 private val LabelColor = Color(0xFF94A3B8)
 private val Divider = Color(0x14FFFFFF)
 
@@ -91,9 +90,7 @@ private val EarthTravelDistance = 440.dp
 private val StartHeaderExitDistance = 110.dp
 private val SolarHeaderTop = 145.dp
 private val SolarHeaderEnterDistance = 40.dp
-private val PlanetCardWidth = 328.dp
-private val PlanetCardHeight = 242.dp
-private val PlanetCardHorizontalPadding = 20.dp
+private val PlanetCardHeight = 260.dp
 private const val EarthSettledAlpha = 0.92f
 private const val SolarHeaderRevealStart = 0.28f
 private const val SolarHeaderStartScale = 0.88f
@@ -167,7 +164,7 @@ private val planets = listOf(
         "70kg → 62kg",
         "17 Hours",
         "-224°C, Bring 3 jackets",
-        "diamond Shower"
+        "Diamond Shower"
     ),
     Planet(
         "Neptune",
@@ -637,126 +634,136 @@ private fun PlanetCard(
             .fillMaxWidth()
             .height(PlanetCardHeight)
     ) {
-        // Main Card Surface
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(cardShape)
                 .background(SpaceCard)
-                .border(0.5.dp, CardStroke, cardShape)
+                .border(1.dp, CardStroke, cardShape)
         )
 
-        // Planet Back Glow
+
         Box(
             modifier = Modifier
-                .size(160.dp)
-                .offset(x = (-40).dp, y = (-40).dp)
+                .zIndex(0.5f)
+                .size(180.dp)
+                .offset(x = (-30).dp, y = (-30).dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFFE29272).copy(alpha = 0.2f), // Approximate accent color for Saturn
+                            Color(0xFFE29272).copy(alpha = 0.15f),
                             Color.Transparent
                         )
                     )
                 )
         )
 
-        // Planet Image (overflowing)
+
         Image(
             painter = painterResource(planet.image),
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .requiredSize(if (planet.name == "Saturn") 280.dp else 220.dp)
+                .zIndex(2f)
+                .requiredSize(if (planet.name == "Saturn") 260.dp else 200.dp)
                 .offset(
-                    x = if (planet.name == "Saturn") (-80).dp else (-50).dp,
-                    y = if (planet.name == "Saturn") (-80).dp else (-50).dp
+                    x = if (planet.name == "Saturn") (-60).dp else (-40).dp,
+                    y = if (planet.name == "Saturn") (-70).dp else (-40).dp
                 )
-                .zIndex(1f)
         )
 
-        // Top Info (Name & Subtitle)
         Column(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 28.dp, end = 24.dp)
-                .width(180.dp)
+                .fillMaxSize()
+                .zIndex(1f)
         ) {
-            Text(
-                modifier = Modifier.padding(bottom = 2.dp),
-                text = planet.name,
-                fontFamily = Rubik,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                lineHeight = 28.sp,
-                color = White100
-            )
-            Text(
-                text = planet.subtitle,
-                fontFamily = Rubik,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                color = LabelColor
-            )
-        }
 
-        // Stats Grid
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp)
-                .fillMaxWidth()
-                .height(110.dp)
-        ) {
-            // Dividers
-            // Horizontal
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.dp)
-                    .padding(horizontal = 20.dp)
-                    .align(Alignment.Center)
-                    .background(Divider)
-            )
-            // Vertical
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(80.dp)
-                    .align(Alignment.Center)
-                    .background(Divider)
-            )
-
-            // Grid Items
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(modifier = Modifier.weight(1f)) {
-                    PlanetInfoItem(
-                        icon = R.drawable.ic_weight_scale,
-                        label = "You Would Weigh",
-                        value = planet.weight,
-                        modifier = Modifier.weight(1f)
+                    .height(130.dp)
+                    .padding(end = 24.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.width(160.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = planet.name,
+                        fontFamily = Rubik,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp,
+                        lineHeight = 32.sp,
+                        color = White100
                     )
-                    PlanetInfoItem(
-                        icon = R.drawable.ic_sun,
-                        label = "One Day",
-                        value = planet.day,
-                        modifier = Modifier.weight(1f)
+                    Text(
+                        text = planet.subtitle,
+                        fontFamily = Rubik,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        color = LabelColor
                     )
                 }
-                Row(modifier = Modifier.weight(1f)) {
-                    PlanetInfoItem(
-                        icon = R.drawable.ic_temperature,
-                        label = "Temperature",
-                        value = planet.temperature,
-                        modifier = Modifier.weight(1f)
-                    )
-                    PlanetInfoItem(
-                        icon = R.drawable.ic_alert_circle,
-                        label = "Additional info",
-                        value = planet.info,
-                        modifier = Modifier.weight(1f)
-                    )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 12.dp)
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .width(0.5.dp)
+                        .fillMaxHeight()
+                        .padding(vertical = 12.dp)
+                        .align(Alignment.Center)
+                        .background(Divider)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .padding(horizontal = 24.dp)
+                        .align(Alignment.Center)
+                        .background(Divider)
+                )
+
+                // Grid Items
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.weight(1f)) {
+                        PlanetInfoItem(
+                            icon = R.drawable.ic_weight_scale,
+                            label = "You Would Weigh",
+                            value = planet.weight,
+                            modifier = Modifier.weight(1f)
+                        )
+                        PlanetInfoItem(
+                            icon = R.drawable.ic_sun,
+                            label = "One Day",
+                            value = planet.day,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(modifier = Modifier.weight(1f)) {
+                        PlanetInfoItem(
+                            icon = R.drawable.ic_temperature,
+                            label = "Temperature",
+                            value = planet.temperature,
+                            modifier = Modifier.weight(1f)
+                        )
+                        PlanetInfoItem(
+                            icon = R.drawable.ic_alert_circle,
+                            label = "Additional info",
+                            value = planet.info,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -773,9 +780,8 @@ private fun PlanetInfoItem(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = painterResource(icon),
@@ -790,11 +796,9 @@ private fun PlanetInfoItem(
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
-                lineHeight = 13.sp,
                 color = LabelColor
             )
-            
-            // Handle values with commas (like temperature) by splitting them
+
             if (value.contains(",")) {
                 val parts = value.split(",")
                 Column {
@@ -803,7 +807,6 @@ private fun PlanetInfoItem(
                         fontFamily = Rubik,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        lineHeight = 18.sp,
                         color = White100
                     )
                     Text(
@@ -811,7 +814,6 @@ private fun PlanetInfoItem(
                         fontFamily = Rubik,
                         fontWeight = FontWeight.Normal,
                         fontSize = 11.sp,
-                        lineHeight = 13.sp,
                         color = LabelColor
                     )
                 }
@@ -821,8 +823,8 @@ private fun PlanetInfoItem(
                     fontFamily = Rubik,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    lineHeight = 18.sp,
-                    color = White100
+                    color = White100,
+                    lineHeight = 18.sp
                 )
             }
         }
