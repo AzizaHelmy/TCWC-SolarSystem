@@ -13,7 +13,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,22 +24,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -56,9 +51,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 
 //region theme
-private val SpaceCard = Color(0xCC0B1223)
+private val SpaceCard = Color(0xFF0B1223)
 private val CardStroke = Color(0xFF2F2E2E)
 
 private val White100 = Color(0xFFFFFFFF)
@@ -78,21 +74,26 @@ private val Lily = FontFamily(
 )
 //endregion
 
-private val HeroScrollDistance = 420.dp
-private val IntroSpacerHeight = 1000.dp
+private val HeroScrollDistance = 620.dp
 private val EarthHeroSize = 980.dp
-private val EarthTopOffset = 195.dp
-private val EarthTravelDistance = 520.dp
+private const val EarthSettledScale = 0.32f
+
+private val EarthTopOffset = 200.dp
+private val EarthTravelDistance = 440.dp
 private val StartHeaderExitDistance = 110.dp
+private val SolarHeaderTop = 145.dp
 private val SolarHeaderEnterDistance = 40.dp
 private val PlanetCardWidth = 328.dp
 private val PlanetCardHeight = 256.dp
 private val PlanetCardHorizontalPadding = 20.dp
 private val PlanetInfoColumnWidth = 126.dp
 
-private const val EarthSettledScale = 0.22f
-private const val SwipeHintThreshold = 0.08f
-
+private const val EarthSettledAlpha = 0.92f
+private const val SolarHeaderRevealStart = 0.28f
+private const val SolarHeaderStartScale = 0.88f
+private val PlanetViewportTop = 360.dp
+private val StackReveal = 14.dp
+private val CardSpacing = 32.dp
 @Immutable
 private data class Planet(
     val name: String,
@@ -211,16 +212,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 private fun SolarSystemScreen() {
-    val listState = rememberLazyListState()
+    val scrollState = rememberScrollState()
     val motion = rememberHeroMotion()
-    val heroProgress = remember(listState, motion) {
-        { listState.heroProgress(motion.scrollDistancePx) }
-    }
-    var earthBottom by remember {
-        mutableStateOf(0)
+    val density = LocalDensity.current
+
+    val stackRevealPx = with(density) { StackReveal.toPx() }
+    val cardHeightPx = with(density) { PlanetCardHeight.toPx() }
+    val cardSpacingPx = with(density) { CardSpacing.toPx() }
+    val introPx = with(density) { HeroScrollDistance.toPx() }
+
+    val heroProgress = remember(scrollState, motion) {
+        {
+            val distance = motion.scrollDistancePx.coerceAtLeast(1f)
+            (scrollState.value / distance).coerceIn(0f, 1f)
+        }
     }
 
     Box(
@@ -236,53 +243,85 @@ private fun SolarSystemScreen() {
                 )
             )
     ) {
-        StarField()
+        StarField(Modifier.zIndex(0f))
 
         EarthHero(
             progressProvider = heroProgress,
-            travelDistancePx = motion.earthTravelPx
+            travelDistancePx = motion.earthTravelPx,
+            modifier = Modifier.zIndex(1f)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(2f)
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.00f to Color.Black.copy(alpha = 0.05f),
+                            0.28f to Color.Black.copy(alpha = 0.18f),
+                            0.45f to Color.Black.copy(alpha = 0.32f),
+                            1.00f to Color.Black.copy(alpha = 0.18f)
+                        )
+                    )
+                )
+        )
+        SolarHeader(
+            progressProvider = heroProgress,
+            enterDistancePx = motion.solarHeaderEnterPx,
+            modifier = Modifier.zIndex(4f)
         )
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = IntroSpacerHeight,
-                bottom = 32.dp
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = PlanetViewportTop)
+                .clipToBounds()
+                .zIndex(3f)
+                .verticalScroll(scrollState)
         ) {
-            items(
-                items = planets,
-                key = { it.name },
-                contentType = { "planet" }
-            ) { planet ->
+            Spacer(
+                modifier = Modifier.height(
+                    HeroScrollDistance +
+                            ((PlanetCardHeight + CardSpacing) * planets.size) +
+                            300.dp
+                )
+            )
+
+            planets.forEachIndexed { index, planet ->
                 PlanetCard(
                     planet = planet,
-                    modifier = Modifier.padding(bottom = 32.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .zIndex(index.toFloat())
+                        .graphicsLayer {
+                            val normalY =
+                                introPx + index * (cardHeightPx + cardSpacingPx)
+
+                            val stackedY =
+                                index * stackRevealPx
+
+                            translationY =
+                                maxOf(normalY, stackedY + scrollState.value)
+                        }
                 )
             }
         }
 
         StartHeader(
             progressProvider = heroProgress,
-            exitDistancePx = motion.startHeaderExitPx
-        )
-
-        SolarHeader(
-            progressProvider = heroProgress,
-            enterDistancePx = motion.solarHeaderEnterPx
+            exitDistancePx = motion.startHeaderExitPx,
+            modifier = Modifier.zIndex(5f)
         )
 
         SwipeHint(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .zIndex(6f),
             progressProvider = heroProgress
         )
     }
 }
-
 @Composable
 private fun rememberHeroMotion(): HeroMotion {
     val density = LocalDensity.current
@@ -298,29 +337,37 @@ private fun rememberHeroMotion(): HeroMotion {
     }
 }
 
-private fun LazyListState.heroProgress(scrollDistancePx: Float): Float {
-    val distance = scrollDistancePx.coerceAtLeast(1f)
-    val offset = if (firstVisibleItemIndex == 0) {
-        firstVisibleItemScrollOffset.toFloat()
-    } else {
-        distance
-    }
-    return (offset / distance).coerceIn(0f, 1f)
+private fun progressBetween(
+    progress: Float,
+    start: Float,
+    end: Float
+): Float {
+    return ((progress - start) / (end - start)).coerceIn(0f, 1f)
 }
 
 @Composable
 private fun SolarHeader(
     progressProvider: () -> Float,
-    enterDistancePx: Float
+    enterDistancePx: Float,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(top = 178.dp)
+            .offset(y = SolarHeaderTop)
             .graphicsLayer {
                 val progress = progressProvider()
-                alpha = progress
-                translationY = enterDistancePx * (1f - progress)
+                val revealProgress = progressBetween(
+                    progress = progress,
+                    start = SolarHeaderRevealStart,
+                    end = 1f
+                )
+                val scale = SolarHeaderStartScale + (1f - SolarHeaderStartScale) * revealProgress
+
+                alpha = revealProgress
+                translationY = enterDistancePx * (1f - revealProgress)
+                scaleX = scale
+                scaleY = scale
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -333,11 +380,13 @@ private fun SolarHeader(
             textAlign = TextAlign.Center
         )
 
-        Text(
-            text = "Earth is only one small part of a much larger\nstory.",
+        Spacer(Modifier.height(6.dp))
+
+        Text(modifier= Modifier.fillMaxWidth(),
+            text = "Earth is only one small part of a much larger story.",
             fontFamily = Lily,
             fontSize = 16.sp,
-            lineHeight = 22.sp,
+            //lineHeight = 22.sp,
             color = White80,
             textAlign = TextAlign.Center
         )
@@ -347,15 +396,18 @@ private fun SolarHeader(
 @Composable
 private fun StartHeader(
     progressProvider: () -> Float,
-    exitDistancePx: Float
+    exitDistancePx: Float,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(top = 96.dp)
             .graphicsLayer {
                 val progress = progressProvider()
-                alpha = 1f - progress
+                val introAlpha = (1f - (progress / 0.12f)).coerceIn(0f, 1f)
+
+                alpha = introAlpha
                 translationY = -exitDistancePx * progress
             },
         horizontalAlignment = Alignment.CenterHorizontally
@@ -385,10 +437,11 @@ private fun StartHeader(
 @Composable
 private fun EarthHero(
     progressProvider: () -> Float,
-    travelDistancePx: Float
+    travelDistancePx: Float,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
     ) {
         Image(
@@ -404,14 +457,17 @@ private fun EarthHero(
                     scaleX = scale
                     scaleY = scale
                     translationY = -travelDistancePx * progress
+                    alpha = 1f + (EarthSettledAlpha - 1f) * progress
                 }
         )
     }
 }
 
 @Composable
-private fun StarField() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
+private fun StarField(
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.fillMaxSize()) {
         stars.forEach { star ->
             drawCircle(
                 color = Color.White.copy(alpha = star.alpha),
@@ -430,12 +486,15 @@ private fun SwipeHint(
     modifier: Modifier = Modifier,
     progressProvider: () -> Float
 ) {
+
     Column(
         modifier = modifier
             .padding(bottom = 20.dp)
             .graphicsLayer {
-                val visible = progressProvider() < SwipeHintThreshold
-                alpha = if (visible) 1f else 0f
+                val progress = progressProvider()
+                val introAlpha = (1f - (progress / 0.08f)).coerceIn(0f, 1f)
+
+                alpha = introAlpha
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
