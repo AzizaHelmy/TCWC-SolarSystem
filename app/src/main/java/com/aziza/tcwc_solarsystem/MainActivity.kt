@@ -94,6 +94,9 @@ private const val SolarHeaderStartScale = 0.88f
 private val PlanetViewportTop = 360.dp
 private val StackReveal = 14.dp
 private val CardSpacing = 32.dp
+private val EarthGlowSize = 600.dp
+private val EarthGlowTopOffset = 40.dp
+
 @Immutable
 private data class Planet(
     val name: String,
@@ -187,19 +190,6 @@ private data class HeroMotion(
     val solarHeaderEnterPx: Float
 )
 
-private val stars = listOf(
-    Star(0.74f, 0.05f, 2.4f, 0.28f),
-    Star(0.26f, 0.16f, 1.8f, 0.30f),
-    Star(0.60f, 0.23f, 1.4f, 0.44f),
-    Star(0.39f, 0.30f, 2.1f, 0.42f),
-    Star(0.53f, 0.35f, 2.8f, 0.52f),
-    Star(0.81f, 0.36f, 1.9f, 0.34f),
-    Star(0.18f, 0.43f, 2.2f, 0.36f),
-    Star(0.66f, 0.49f, 1.6f, 0.34f),
-    Star(0.30f, 0.56f, 2.7f, 0.32f),
-    Star(0.73f, 0.68f, 2.1f, 0.28f)
-)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -212,6 +202,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 private fun SolarSystemScreen() {
     val scrollState = rememberScrollState()
@@ -231,19 +222,19 @@ private fun SolarSystemScreen() {
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to Color(0xFF05020A),
-                        0.44f to Color(0xFF061427),
-                        1.00f to Color(0xFF02050E)
-                    )
-                )
-            )
+        modifier = Modifier.fillMaxSize()
     ) {
-        StarField(Modifier.zIndex(0f))
+        AnimatedSpaceBackground(
+            progressProvider = heroProgress,
+            modifier = Modifier.zIndex(0f)
+        )
+
+        StarsOverlay()
+
+        EarthGlow(
+            progressProvider = heroProgress,
+            modifier = Modifier.zIndex(0.5f)
+        )
 
         EarthHero(
             progressProvider = heroProgress,
@@ -254,16 +245,7 @@ private fun SolarSystemScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(2f)
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.00f to Color.Black.copy(alpha = 0.05f),
-                            0.28f to Color.Black.copy(alpha = 0.18f),
-                            0.45f to Color.Black.copy(alpha = 0.32f),
-                            1.00f to Color.Black.copy(alpha = 0.18f)
-                        )
-                    )
-                )
+                .background(Color.Black.copy(alpha = 0.06f))
         )
         SolarHeader(
             progressProvider = heroProgress,
@@ -322,6 +304,7 @@ private fun SolarSystemScreen() {
         )
     }
 }
+
 @Composable
 private fun rememberHeroMotion(): HeroMotion {
     val density = LocalDensity.current
@@ -334,6 +317,79 @@ private fun rememberHeroMotion(): HeroMotion {
                 solarHeaderEnterPx = SolarHeaderEnterDistance.toPx()
             )
         }
+    }
+}
+
+@Composable
+private fun AnimatedSpaceBackground(
+    progressProvider: () -> Float,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val progress = progressProvider()
+
+        val top = androidx.compose.ui.graphics.lerp(
+            Color(0xFF05020A),
+            Color(0xFF1E1B4B),
+            progress
+        )
+
+        val middle = androidx.compose.ui.graphics.lerp(
+            Color(0xFF061427),
+            Color(0xFF0F172A),
+            progress
+        )
+
+        val bottom = androidx.compose.ui.graphics.lerp(
+            Color(0xFF02050E),
+            Color(0xFF030712),
+            progress
+        )
+
+        drawRect(
+            brush = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.00f to top,
+                    0.50f to middle,
+                    1.00f to bottom
+                )
+            )
+        )
+    }
+}
+
+@Composable
+private fun EarthGlow(
+    progressProvider: () -> Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Box(
+            modifier = Modifier
+                .requiredSize(EarthGlowSize)
+                .offset(y = EarthGlowTopOffset)
+                .graphicsLayer {
+                    val progress = progressProvider()
+
+                    alpha = progress
+
+                    val scale = 0.8f + (1f - 0.8f) * progress
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF1E1B4B).copy(alpha = 0.45f),
+                            Color(0xFF0F172A).copy(alpha = 0.25f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
     }
 }
 
@@ -382,7 +438,8 @@ private fun SolarHeader(
 
         Spacer(Modifier.height(6.dp))
 
-        Text(modifier= Modifier.fillMaxWidth(),
+        Text(
+            modifier = Modifier.fillMaxWidth(),
             text = "Earth is only one small part of a much larger story.",
             fontFamily = Lily,
             fontSize = 16.sp,
@@ -464,21 +521,17 @@ private fun EarthHero(
 }
 
 @Composable
-private fun StarField(
+private fun StarsOverlay(
     modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = modifier.fillMaxSize()) {
-        stars.forEach { star ->
-            drawCircle(
-                color = Color.White.copy(alpha = star.alpha),
-                radius = star.radius,
-                center = Offset(
-                    x = size.width * star.x,
-                    y = size.height * star.y
-                )
-            )
-        }
-    }
+    Image(
+        painter = painterResource(R.drawable.stars_overlay),
+        contentDescription = null,
+        modifier = modifier
+            .fillMaxSize()
+            .zIndex(0.1f),
+        contentScale = ContentScale.Crop
+    )
 }
 
 @Composable
