@@ -6,7 +6,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,17 +26,17 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -77,26 +77,128 @@ private val Lily = FontFamily(
     Font(R.font.lily_script_one, FontWeight.Normal)
 )
 //endregion
+
+private val HeroScrollDistance = 420.dp
+private val IntroSpacerHeight = 1000.dp
+private val EarthHeroSize = 980.dp
+private val EarthTopOffset = 195.dp
+private val EarthTravelDistance = 520.dp
+private val StartHeaderExitDistance = 110.dp
+private val SolarHeaderEnterDistance = 40.dp
+private val PlanetCardWidth = 328.dp
+private val PlanetCardHeight = 256.dp
+private val PlanetCardHorizontalPadding = 20.dp
+private val PlanetInfoColumnWidth = 126.dp
+
+private const val EarthSettledScale = 0.22f
+private const val SwipeHintThreshold = 0.08f
+
+@Immutable
 private data class Planet(
     val name: String,
     val subtitle: String,
-    @DrawableRes val image: Int,
+    @param:DrawableRes val image: Int,
     val weight: String,
     val day: String,
     val temperature: String,
     val info: String
 )
+
 private val planets = listOf(
-    Planet("Saturn", "The Ring Master", R.drawable.saturn, "70kg → 74kg", "10.7 Hours", "-178°C, Bring a\njacket", "Lighter than\nwater"),
-    Planet("Mars", "The next colony", R.drawable.mars, "70kg → 27kg", "24.6 Hours", "-65°C, Bring a\njacket", "Red Dust Storms"),
-    Planet("Mercury", "The Fastest Planet", R.drawable.mercury, "70kg → 26kg", "1,408 Hours", "167°C", "Birthday every\n88 days")
+    Planet(
+        "Saturn",
+        "The Ring Master",
+        R.drawable.saturn,
+        "70kg → 74kg",
+        "10.7 Hours",
+        "-178°C, Bring a\njacket",
+        "Lighter than\nwater"
+    ),
+    Planet(
+        "Mars",
+        "The next colony",
+        R.drawable.mars,
+        "70kg → 27kg",
+        "24.6 Hours",
+        "-65°C, Bring a\njacket",
+        "Red Dust Storms"
+    ),
+    Planet(
+        "Mercury",
+        "The Fastest Planet",
+        R.drawable.mercury,
+        "70kg → 26kg",
+        "1,408 Hours",
+        "167°C",
+        "Birthday every\n88 days"
+    ),
+    Planet(
+        "Venus",
+        "The Toxic Beauty",
+        R.drawable.venus,
+        "70kg → 63kg",
+        "243 Days",
+        "465°C",
+        "Sun rises from\nWest"
+    ),
+    Planet(
+        "Jupiter",
+        "The Heavy Giant",
+        R.drawable.jupiter,
+        "70kg → 177kg",
+        "9.9 Hours",
+        "-110°C, Bring a\njacket",
+        "Has 95 Moons"
+    ),
+    Planet(
+        "Uranus",
+        "The Lazy Iceberg",
+        R.drawable.uranus,
+        "70kg → 62kg",
+        "17 Hours",
+        "-224°C, Bring 3\njackets",
+        "diamond Shower"
+    ),
+    Planet(
+        "Neptune",
+        "The Windy World",
+        R.drawable.neptune,
+        "70kg → 79kg",
+        "16 Hours",
+        "-214°C, Bring 3\njackets",
+        "Wind faster than\nSound"
+    )
 )
+
+@Immutable
 private data class Star(
     val x: Float,
     val y: Float,
     val radius: Float,
     val alpha: Float
 )
+
+@Immutable
+private data class HeroMotion(
+    val scrollDistancePx: Float,
+    val earthTravelPx: Float,
+    val startHeaderExitPx: Float,
+    val solarHeaderEnterPx: Float
+)
+
+private val stars = listOf(
+    Star(0.74f, 0.05f, 2.4f, 0.28f),
+    Star(0.26f, 0.16f, 1.8f, 0.30f),
+    Star(0.60f, 0.23f, 1.4f, 0.44f),
+    Star(0.39f, 0.30f, 2.1f, 0.42f),
+    Star(0.53f, 0.35f, 2.8f, 0.52f),
+    Star(0.81f, 0.36f, 1.9f, 0.34f),
+    Star(0.18f, 0.43f, 2.2f, 0.36f),
+    Star(0.66f, 0.49f, 1.6f, 0.34f),
+    Star(0.30f, 0.56f, 2.7f, 0.32f),
+    Star(0.73f, 0.68f, 2.1f, 0.28f)
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,24 +211,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 private fun SolarSystemScreen() {
-    var selectedPlanet by rememberSaveable { mutableStateOf(planets.first().name) }
-    val selected = remember(selectedPlanet) {
-        planets.first { it.name == selectedPlanet }
-    }
-
     val listState = rememberLazyListState()
-
-    val progress by remember {
-        derivedStateOf {
-            val offset = if (listState.firstVisibleItemIndex == 0) {
-                listState.firstVisibleItemScrollOffset
-            } else {
-                600
-            }
-            (offset / 600f).coerceIn(0f, 1f)
-        }
+    val motion = rememberHeroMotion()
+    val heroProgress = remember(listState, motion) {
+        { listState.heroProgress(motion.scrollDistancePx) }
+    }
+    var earthBottom by remember {
+        mutableStateOf(0)
     }
 
     Box(
@@ -142,18 +236,27 @@ private fun SolarSystemScreen() {
                 )
             )
     ) {
-        EarthHero(progress = progress)
+        StarField()
+
+        EarthHero(
+            progressProvider = heroProgress,
+            travelDistancePx = motion.earthTravelPx
+        )
 
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 24.dp)
+            contentPadding = PaddingValues(
+                top = IntroSpacerHeight,
+                bottom = 32.dp
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                Spacer(Modifier.height(1000.dp))
-            }
-
-            items(planets, key = { it.name }) { planet ->
+            items(
+                items = planets,
+                key = { it.name },
+                contentType = { "planet" }
+            ) { planet ->
                 PlanetCard(
                     planet = planet,
                     modifier = Modifier.padding(bottom = 32.dp)
@@ -161,27 +264,63 @@ private fun SolarSystemScreen() {
             }
         }
 
-        StartHeader(progress = progress)
+        StartHeader(
+            progressProvider = heroProgress,
+            exitDistancePx = motion.startHeaderExitPx
+        )
 
-        SolarHeader(progress = progress)
+        SolarHeader(
+            progressProvider = heroProgress,
+            enterDistancePx = motion.solarHeaderEnterPx
+        )
 
         SwipeHint(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding(),
-            visible = progress < 0.08f
+            progressProvider = heroProgress
         )
     }
 }
+
 @Composable
-private fun SolarHeader(progress: Float) {
+private fun rememberHeroMotion(): HeroMotion {
+    val density = LocalDensity.current
+    return remember(density) {
+        with(density) {
+            HeroMotion(
+                scrollDistancePx = HeroScrollDistance.toPx(),
+                earthTravelPx = EarthTravelDistance.toPx(),
+                startHeaderExitPx = StartHeaderExitDistance.toPx(),
+                solarHeaderEnterPx = SolarHeaderEnterDistance.toPx()
+            )
+        }
+    }
+}
+
+private fun LazyListState.heroProgress(scrollDistancePx: Float): Float {
+    val distance = scrollDistancePx.coerceAtLeast(1f)
+    val offset = if (firstVisibleItemIndex == 0) {
+        firstVisibleItemScrollOffset.toFloat()
+    } else {
+        distance
+    }
+    return (offset / distance).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun SolarHeader(
+    progressProvider: () -> Float,
+    enterDistancePx: Float
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 178.dp)
             .graphicsLayer {
+                val progress = progressProvider()
                 alpha = progress
-                translationY = 40f * (1f - progress)
+                translationY = enterDistancePx * (1f - progress)
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -204,15 +343,20 @@ private fun SolarHeader(progress: Float) {
         )
     }
 }
+
 @Composable
-private fun StartHeader(progress: Float) {
+private fun StartHeader(
+    progressProvider: () -> Float,
+    exitDistancePx: Float
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 96.dp)
             .graphicsLayer {
+                val progress = progressProvider()
                 alpha = 1f - progress
-                translationY = -110f * progress
+                translationY = -exitDistancePx * progress
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -237,8 +381,12 @@ private fun StartHeader(progress: Float) {
         )
     }
 }
+
 @Composable
-private fun EarthHero(progress: Float) {
+private fun EarthHero(
+    progressProvider: () -> Float,
+    travelDistancePx: Float
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
@@ -248,33 +396,22 @@ private fun EarthHero(progress: Float) {
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .requiredSize(980.dp)
-                .offset(y = 195.dp)
+                .requiredSize(EarthHeroSize)
+                .offset(y = EarthTopOffset)
                 .graphicsLayer {
-                    val scale = 1f + (0.22f - 1f) * progress
+                    val progress = progressProvider()
+                    val scale = 1f + (EarthSettledScale - 1f) * progress
                     scaleX = scale
                     scaleY = scale
-                    translationY = -520f * progress
+                    translationY = -travelDistancePx * progress
                 }
         )
     }
 }
+
 @Composable
 private fun StarField() {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val stars = listOf(
-            Star(0.74f, 0.05f, 2.4f, 0.28f),
-            Star(0.26f, 0.16f, 1.8f, 0.30f),
-            Star(0.60f, 0.23f, 1.4f, 0.44f),
-            Star(0.39f, 0.30f, 2.1f, 0.42f),
-            Star(0.53f, 0.35f, 2.8f, 0.52f),
-            Star(0.81f, 0.36f, 1.9f, 0.34f),
-            Star(0.18f, 0.43f, 2.2f, 0.36f),
-            Star(0.66f, 0.49f, 1.6f, 0.34f),
-            Star(0.30f, 0.56f, 2.7f, 0.32f),
-            Star(0.73f, 0.68f, 2.1f, 0.28f)
-        )
-
         stars.forEach { star ->
             drawCircle(
                 color = Color.White.copy(alpha = star.alpha),
@@ -287,30 +424,35 @@ private fun StarField() {
         }
     }
 }
+
 @Composable
 private fun SwipeHint(
     modifier: Modifier = Modifier,
-    visible: Boolean
+    progressProvider: () -> Float
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        modifier = modifier.padding(bottom = 20.dp)
+    Column(
+        modifier = modifier
+            .padding(bottom = 20.dp)
+            .graphicsLayer {
+                val visible = progressProvider() < SwipeHintThreshold
+                alpha = if (visible) 1f else 0f
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            SwipeChevrons()
+        SwipeChevrons()
 
-            Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
-            Text(
-                text = "Swipe up to explore",
-                fontFamily = Rubik,
-                fontWeight = FontWeight.Medium,
-                fontSize = 17.sp,
-                color = White100
-            )
-        }
+        Text(
+            text = "Swipe up to explore",
+            fontFamily = Rubik,
+            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
+            color = White100
+        )
     }
 }
+
 @Composable
 private fun SwipeChevrons() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -349,6 +491,7 @@ private fun SwipeChevrons() {
         }
     }
 }
+
 @Composable
 private fun PlanetCard(
     planet: Planet,
@@ -358,8 +501,8 @@ private fun PlanetCard(
 
     Box(
         modifier = modifier
-            .width(328.dp)
-            .height(242.dp)
+            .width(PlanetCardWidth)
+            .height(PlanetCardHeight)
     ) {
         Box(
             modifier = Modifier
@@ -380,19 +523,19 @@ private fun PlanetCard(
             modifier = Modifier
                 .requiredSize(250.dp)
                 .offset(
-                    x = (-54).dp,
+                    x = (-46).dp,
                     y = (-28).dp
                 )
                 .graphicsLayer {
-                    scaleX = 1.08f
-                    scaleY = 1.08f
+                    scaleX = 1.02f
+                    scaleY = 1.02f
                 }
         )
 
         Column(
             modifier = Modifier
-                .offset(x = 132.dp, y = 28.dp)
-                .width(170.dp)
+                .offset(x = 142.dp, y = 28.dp)
+                .width(160.dp)
         ) {
             Text(
                 text = planet.name,
@@ -415,55 +558,55 @@ private fun PlanetCard(
 
         Row(
             modifier = Modifier
-                .offset(x = 28.dp, y = 116.dp)
-                .width(292.dp)
-                .height(40.dp),
+                .offset(x = PlanetCardHorizontalPadding, y = 118.dp)
+                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2)
+                .height(44.dp),
             verticalAlignment = Alignment.Top
         ) {
             PlanetInfoItem(
                 icon = R.drawable.ic_weight_scale,
                 label = "You Would Weigh",
                 value = planet.weight,
-                modifier = Modifier.width(126.dp)
+                modifier = Modifier.width(PlanetInfoColumnWidth)
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             VerticalDivider()
-            Spacer(Modifier.width(21.dp))
+            Spacer(Modifier.width(14.dp))
             PlanetInfoItem(
                 icon = R.drawable.ic_sun,
                 label = "One Day",
                 value = planet.day,
-                modifier = Modifier.width(130.dp)
+                modifier = Modifier.width(PlanetInfoColumnWidth)
             )
         }
 
         HorizontalDividerLine(
             modifier = Modifier
-                .offset(x = 26.dp, y = 150.dp)
-                .width(276.dp)
+                .offset(x = PlanetCardHorizontalPadding, y = 168.dp)
+                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2)
         )
 
         Row(
             modifier = Modifier
-                .offset(x = 28.dp, y = 170.dp)
-                .width(292.dp)
-                .height(44.dp),
+                .offset(x = PlanetCardHorizontalPadding, y = 188.dp)
+                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2)
+                .height(52.dp),
             verticalAlignment = Alignment.Top
         ) {
             PlanetInfoItem(
                 icon = R.drawable.ic_temperature,
                 label = "Temperature",
                 value = planet.temperature,
-                modifier = Modifier.width(126.dp)
+                modifier = Modifier.width(PlanetInfoColumnWidth)
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(12.dp))
             VerticalDivider()
-            Spacer(Modifier.width(21.dp))
+            Spacer(Modifier.width(14.dp))
             PlanetInfoItem(
                 icon = R.drawable.ic_alert_circle,
                 label = "Additional info",
                 value = planet.info,
-                modifier = Modifier.width(130.dp)
+                modifier = Modifier.width(PlanetInfoColumnWidth)
             )
         }
     }
@@ -497,8 +640,8 @@ private fun PlanetInfoItem(
                 text = label,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Normal,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
                 color = White66,
                 maxLines = 1
             )
@@ -506,8 +649,8 @@ private fun PlanetInfoItem(
                 text = value,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                lineHeight = 17.sp,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
                 color = White88
             )
         }
@@ -519,13 +662,14 @@ private fun VerticalDivider() {
     Box(
         Modifier
             .width(1.dp)
-            .height(40.dp)
+            .height(42.dp)
             .background(Divider)
     )
 }
 
 @Composable
-private fun HorizontalDividerLine(
+private
+fun HorizontalDividerLine(
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -552,8 +696,6 @@ private fun PlanetCardPreview() {
         planet = saturnPlanet
     )
 }
-
-
 
 @Preview(widthDp = 360, heightDp = 800)
 @Composable
