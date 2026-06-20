@@ -578,21 +578,21 @@ private fun SwipeArrows() {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { index ->
-            val localPhase = ((phase.value + index * 0.22f) % 1f)
-
-            val alpha = when {
-                localPhase < 0.35f -> localPhase / 0.35f
-                localPhase < 0.75f -> 1f
-                else -> 1f - ((localPhase - 0.75f) / 0.25f)
-            }.coerceIn(0f, 1f)
-
             Canvas(
                 modifier = Modifier
                     .width(18.dp)
                     .height(7.dp)
                     .graphicsLayer {
-                        this.alpha = 0.25f + alpha * 0.75f
-                        translationY = -3f * alpha
+                        val localPhase = ((phase.value + index * 0.22f) % 1f)
+
+                        val arrowAlpha = when {
+                            localPhase < 0.35f -> localPhase / 0.35f
+                            localPhase < 0.75f -> 1f
+                            else -> 1f - ((localPhase - 0.75f) / 0.25f)
+                        }.coerceIn(0f, 1f)
+
+                        alpha = 0.25f + arrowAlpha * 0.75f
+                        translationY = -3f * arrowAlpha
                     }
             ) {
                 val stroke = 2.dp.toPx()
