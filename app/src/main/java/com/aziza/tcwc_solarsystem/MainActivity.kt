@@ -6,6 +6,12 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -84,7 +90,7 @@ private val StartHeaderExitDistance = 110.dp
 private val SolarHeaderTop = 145.dp
 private val SolarHeaderEnterDistance = 40.dp
 private val PlanetCardWidth = 328.dp
-private val PlanetCardHeight = 256.dp
+private val PlanetCardHeight = 260.dp
 private val PlanetCardHorizontalPadding = 20.dp
 private val PlanetInfoColumnWidth = 126.dp
 
@@ -115,8 +121,8 @@ private val planets = listOf(
         R.drawable.saturn,
         "70kg → 74kg",
         "10.7 Hours",
-        "-178°C, Bring a\njacket",
-        "Lighter than\nwater"
+        "-178°C, Bring a jacket",
+        "Lighter than water"
     ),
     Planet(
         "Mars",
@@ -124,7 +130,7 @@ private val planets = listOf(
         R.drawable.mars,
         "70kg → 27kg",
         "24.6 Hours",
-        "-65°C, Bring a\njacket",
+        "-65°C, Bring a jacket",
         "Red Dust Storms"
     ),
     Planet(
@@ -134,7 +140,7 @@ private val planets = listOf(
         "70kg → 26kg",
         "1,408 Hours",
         "167°C",
-        "Birthday every\n88 days"
+        "Birthday every 88 days"
     ),
     Planet(
         "Venus",
@@ -143,7 +149,7 @@ private val planets = listOf(
         "70kg → 63kg",
         "243 Days",
         "465°C",
-        "Sun rises from\nWest"
+        "Sun rises from West"
     ),
     Planet(
         "Jupiter",
@@ -151,7 +157,7 @@ private val planets = listOf(
         R.drawable.jupiter,
         "70kg → 177kg",
         "9.9 Hours",
-        "-110°C, Bring a\njacket",
+        "-110°C, Bring a jacket",
         "Has 95 Moons"
     ),
     Planet(
@@ -160,7 +166,7 @@ private val planets = listOf(
         R.drawable.uranus,
         "70kg → 62kg",
         "17 Hours",
-        "-224°C, Bring 3\njackets",
+        "-224°C, Bring 3 jackets",
         "diamond Shower"
     ),
     Planet(
@@ -169,17 +175,9 @@ private val planets = listOf(
         R.drawable.neptune,
         "70kg → 79kg",
         "16 Hours",
-        "-214°C, Bring 3\njackets",
-        "Wind faster than\nSound"
+        "-214°C, Bring 3 jackets",
+        "Wind faster than Sound"
     )
-)
-
-@Immutable
-private data class Star(
-    val x: Float,
-    val y: Float,
-    val radius: Float,
-    val alpha: Float
 )
 
 @Immutable
@@ -236,7 +234,7 @@ private fun SolarSystemScreen() {
             modifier = Modifier.zIndex(0.5f)
         )
 
-        EarthHero(
+        EarthImage(
             progressProvider = heroProgress,
             travelDistancePx = motion.earthTravelPx,
             modifier = Modifier.zIndex(1f)
@@ -470,21 +468,21 @@ private fun StartHeader(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
+            modifier = Modifier.padding(4.dp),
             text = "Earth",
+            textAlign = TextAlign.Center,
             fontFamily = Rubik,
             fontWeight = FontWeight.Bold,
             fontSize = 64.sp,
-            lineHeight = 72.sp,
+            lineHeight = 76.sp,
             color = White88
         )
-
-        Spacer(Modifier.height(10.dp))
 
         Text(
             text = "A tiny blue world drifting\nthrough the endless dark.",
             fontFamily = Lily,
-            fontSize = 19.sp,
-            lineHeight = 24.sp,
+            fontSize = 16.sp,
+            lineHeight = 22.sp,
             color = White80,
             textAlign = TextAlign.Center
         )
@@ -492,7 +490,7 @@ private fun StartHeader(
 }
 
 @Composable
-private fun EarthHero(
+private fun EarthImage(
     progressProvider: () -> Float,
     travelDistancePx: Float,
     modifier: Modifier = Modifier
@@ -542,54 +540,75 @@ private fun SwipeHint(
 
     Column(
         modifier = modifier
-            .padding(bottom = 20.dp)
+            .padding(bottom = 18.dp)
             .graphicsLayer {
                 val progress = progressProvider()
                 val introAlpha = (1f - (progress / 0.08f)).coerceIn(0f, 1f)
-
                 alpha = introAlpha
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SwipeChevrons()
-
-        Spacer(Modifier.height(12.dp))
+        SwipeArrows()
 
         Text(
+            modifier = Modifier.padding(top = 12.dp),
             text = "Swipe up to explore",
             fontFamily = Rubik,
             fontWeight = FontWeight.Medium,
-            fontSize = 17.sp,
+            fontSize = 16.sp,
             color = White100
         )
     }
 }
 
 @Composable
-private fun SwipeChevrons() {
+private fun SwipeArrows() {
+    val transition = rememberInfiniteTransition(label = "swipe_chevrons")
+
+    val phase = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1400,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "chevron_phase"
+    )
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         repeat(3) { index ->
-            val alpha = when (index) {
-                0 -> 0.42f
-                1 -> 0.62f
-                else -> 0.86f
-            }
+            val localPhase = ((phase.value + index * 0.22f) % 1f)
+
+            val alpha = when {
+                localPhase < 0.35f -> localPhase / 0.35f
+                localPhase < 0.75f -> 1f
+                else -> 1f - ((localPhase - 0.75f) / 0.25f)
+            }.coerceIn(0f, 1f)
 
             Canvas(
                 modifier = Modifier
                     .width(18.dp)
-                    .height(8.dp)
+                    .height(7.dp)
+                    .graphicsLayer {
+                        this.alpha = 0.25f + alpha * 0.75f
+                        translationY = -3f * alpha
+                    }
             ) {
                 val stroke = 2.dp.toPx()
+
                 drawLine(
-                    color = White100.copy(alpha = alpha),
+                    color = White100,
                     start = Offset(1.dp.toPx(), size.height - 1.dp.toPx()),
                     end = Offset(size.width / 2f, 1.dp.toPx()),
                     strokeWidth = stroke,
                     cap = StrokeCap.Round
                 )
+
                 drawLine(
-                    color = White100.copy(alpha = alpha),
+                    color = White100,
                     start = Offset(size.width - 1.dp.toPx(), size.height - 1.dp.toPx()),
                     end = Offset(size.width / 2f, 1.dp.toPx()),
                     strokeWidth = stroke,
@@ -598,7 +617,7 @@ private fun SwipeChevrons() {
             }
 
             if (index != 2) {
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -613,7 +632,8 @@ private fun PlanetCard(
 
     Box(
         modifier = modifier
-            .width(PlanetCardWidth)
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
             .height(PlanetCardHeight)
     ) {
         Box(
@@ -621,11 +641,7 @@ private fun PlanetCard(
                 .fillMaxSize()
                 .clip(cardShape)
                 .background(SpaceCard)
-                .border(
-                    0.5.dp,
-                    CardStroke,
-                    cardShape
-                )
+                .border(0.5.dp, CardStroke, cardShape)
         )
 
         Image(
@@ -633,15 +649,11 @@ private fun PlanetCard(
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .requiredSize(250.dp)
+                .requiredSize(260.dp)
                 .offset(
-                    x = (-46).dp,
-                    y = (-28).dp
+                    x = (-64).dp,
+                    y = (-64).dp
                 )
-                .graphicsLayer {
-                    scaleX = 1.02f
-                    scaleY = 1.02f
-                }
         )
 
         Column(
@@ -650,20 +662,20 @@ private fun PlanetCard(
                 .width(160.dp)
         ) {
             Text(
+                modifier = Modifier.padding(bottom = 6.dp),
                 text = planet.name,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                lineHeight = 26.sp,
+                fontSize = 18.sp,
+                lineHeight = 21.sp,
                 color = White88
             )
-            Spacer(Modifier.height(7.dp))
             Text(
                 text = planet.subtitle,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
-                lineHeight = 19.sp,
+                fontSize = 14.sp,
+                lineHeight = 17.sp,
                 color = White66
             )
         }
@@ -671,24 +683,26 @@ private fun PlanetCard(
         Row(
             modifier = Modifier
                 .offset(x = PlanetCardHorizontalPadding, y = 118.dp)
-                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2)
-                .height(44.dp),
-            verticalAlignment = Alignment.Top
+                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
             PlanetInfoItem(
                 icon = R.drawable.ic_weight_scale,
                 label = "You Would Weigh",
                 value = planet.weight,
-                modifier = Modifier.width(PlanetInfoColumnWidth)
+                modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.width(12.dp))
+
             VerticalDivider()
-            Spacer(Modifier.width(14.dp))
+
             PlanetInfoItem(
                 icon = R.drawable.ic_sun,
                 label = "One Day",
                 value = planet.day,
-                modifier = Modifier.width(PlanetInfoColumnWidth)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 24.dp)
             )
         }
 
@@ -701,24 +715,27 @@ private fun PlanetCard(
         Row(
             modifier = Modifier
                 .offset(x = PlanetCardHorizontalPadding, y = 188.dp)
-                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2)
-                .height(52.dp),
-            verticalAlignment = Alignment.Top
+                .width(PlanetCardWidth - PlanetCardHorizontalPadding * 2),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             PlanetInfoItem(
                 icon = R.drawable.ic_temperature,
                 label = "Temperature",
                 value = planet.temperature,
-                modifier = Modifier.width(PlanetInfoColumnWidth)
+                modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.width(12.dp))
+
+            Spacer(Modifier.width(16.dp))
+
             VerticalDivider()
-            Spacer(Modifier.width(14.dp))
+
+            Spacer(Modifier.width(16.dp))
+
             PlanetInfoItem(
                 icon = R.drawable.ic_alert_circle,
                 label = "Additional info",
                 value = planet.info,
-                modifier = Modifier.width(PlanetInfoColumnWidth)
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -733,36 +750,34 @@ private fun PlanetInfoItem(
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.Start
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
             tint = White66,
+
             modifier = Modifier
-                .padding(top = 2.dp)
                 .size(20.dp)
+
         )
 
-        Spacer(Modifier.width(12.dp))
-
-        Column {
+        Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(
                 text = label,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Normal,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 lineHeight = 14.sp,
-                color = White66,
-                maxLines = 1
+                color = White66
             )
             Text(
                 text = value,
                 fontFamily = Rubik,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                lineHeight = 16.sp,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
                 color = White88
             )
         }
@@ -776,6 +791,7 @@ private fun VerticalDivider() {
             .width(1.dp)
             .height(42.dp)
             .background(Divider)
+            .padding(top = 4.dp)
     )
 }
 
